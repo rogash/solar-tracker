@@ -1,0 +1,11 @@
+{
+  "name": "Solar Tracker",
+  "short_name": "Solar",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#1a3a5c",
+  "theme_color": "#1a3a5c",
+  "icons": [
+    { "src": "icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}
