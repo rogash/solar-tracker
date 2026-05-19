@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Solar Tracker</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Solar Tracker">
+<meta name="theme-color" content="#1a3a5c">
+<link rel="manifest" href="data:application/json,{%22name%22:%22Solar+Tracker%22,%22short_name%22:%22Solar%22,%22start_url%22:%22.%22,%22display%22:%22standalone%22,%22background_color%22:%22%231a3a5c%22,%22theme_color%22:%22%231a3a5c%22,%22icons%22:[{%22src%22:%22data:image/svg+xml,%3Csvg+xmlns='http://www.w3.org/2000/svg'+viewBox='0+0+100+100'%3E%3Crect+width='100'+height='100'+rx='20'+fill='%231a3a5c'/%3E%3Ctext+y='.9em'+font-size='80'+text-anchor='middle'+x='50'%3E☀️%3C/text%3E%3C/svg%3E%22,%22sizes%22:%22any%22,%22type%22:%22image/svg+xml%22}]}">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f5f0;
+    --surface: #ffffff;
+    --surface2: #f0efea;
+    --text: #1a1a1a;
+    --text2: #666;
+    --text3: #999;
+    --border: rgba(0,0,0,.12);
+    --border2: rgba(0,0,0,.22);
+    --green: #1D9E75;
+    --green-bg: rgba(29,158,117,.08);
+    --green-border: rgba(29,158,117,.25);
+    --blue: #185FA5;
+    --blue-bg: rgba(24,95,165,.08);
+    --blue-border: rgba(24,95,165,.25);
+    --red: #A32D2D;
+    --red-bg: rgba(163,45,45,.08);
+    --red-border: rgba(163,45,45,.25);
+    --navy: #1a3a5c;
+    --gold: #f0a500;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a1a;
+      --surface: #242424;
+      --surface2: #2e2e2e;
+      --text: #f0f0f0;
+      --text2: #aaa;
+      --text3: #666;
+      --border: rgba(255,255,255,.1);
+      --border2: rgba(255,255,255,.2);
+      --green: #2ec994;
+      --green-bg: rgba(46,201,148,.1);
+      --green-border: rgba(46,201,148,.3);
+      --blue: #5b9bd5;
+      --blue-bg: rgba(91,155,213,.1);
+      --blue-border: rgba(91,155,213,.3);
+    }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 16px; }
+  .app { max-width: 760px; margin: 0 auto; }
+
+  /* Header */
+  .header { background: var(--navy); color: #fff; border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .logo { background: var(--gold); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #fff; flex-shrink: 0; }
+  .header h1 { font-size: 16px; font-weight: 500; }
+  .header p { font-size: 12px; opacity: .7; margin-top: 2px; }
+  .month-pill { background: rgba(255,255,255,.15); border-radius: 6px; padding: 6px 12px; font-size: 13px; }
+
+  /* Main card */
+  .card { background: var(--surface); border: .5px solid var(--border); border-radius: 0 0 var(--radius-lg) var(--radius-lg); padding: 16px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+  .tab { padding: 7px 16px; border-radius: var(--radius); border: .5px solid var(--border2); background: var(--surface); color: var(--text2); cursor: pointer; font-size: 13px; transition: all .15s; }
+  .tab:hover { background: var(--surface2); }
+  .tab.active { background: var(--navy); color: #fff; border-color: var(--navy); }
+
+  /* Metric grid */
+  .metric-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 16px; }
+  .metric { background: var(--surface2); border-radius: var(--radius); padding: 12px 14px; }
+  .metric-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+  .metric-value { font-size: 20px; font-weight: 500; }
+  .metric-value.green { color: var(--green); }
+  .metric-value.blue { color: var(--blue); }
+  .metric-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  /* Panels */
+  .panel { background: var(--surface); border: .5px solid var(--border); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 14px; }
+  .panel-title { font-size: 11px; font-weight: 500; color: var(--text3); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 12px; }
+
+  /* Totals */
+  .totals-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .total-card { background: var(--surface2); border-radius: var(--radius); padding: 12px; text-align: center; }
+  .total-card .v { font-size: 16px; font-weight: 500; color: var(--green); }
+  .total-card .l { font-size: 11px; color: var(--text3); margin-top: 3px; }
+
+  /* Chart */
+  .chart-wrap { position: relative; height: 220px; }
+
+  /* Form */
+  .form-section { border: .5px solid var(--border); border-radius: var(--radius-lg); padding: 16px; margin-bottom: 14px; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .form-group label { font-size: 12px; color: var(--text2); display: block; margin-bottom: 5px; }
+  .form-group input { width: 100%; padding: 8px 10px; border: .5px solid var(--border2); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 14px; outline: none; transition: border-color .15s; }
+  .form-group input:focus { border-color: var(--navy); }
+  .form-group input.filled { border-color: var(--green); background: var(--green-bg); }
+  .form-group .hint-text { font-size: 11px; color: var(--text3); margin-top: 4px; }
+
+  /* Buttons */
+  .btn { padding: 9px 16px; border-radius: var(--radius); border: .5px solid var(--border2); background: var(--surface); color: var(--text); cursor: pointer; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; transition: all .15s; }
+  .btn:hover { background: var(--surface2); }
+  .btn-primary { background: var(--navy); color: #fff; border-color: var(--navy); }
+  .btn-primary:hover { background: #243f64; }
+  .btn-green { background: var(--green); color: #fff; border-color: var(--green); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-row { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; align-items: center; }
+
+  /* Upload zone */
+  .upload-zone { border: 1.5px dashed var(--border2); border-radius: var(--radius-lg); padding: 28px 20px; text-align: center; cursor: pointer; transition: all .2s; margin-bottom: 14px; }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--green); background: var(--green-bg); }
+  .upload-zone .zi { font-size: 40px; color: var(--text3); display: block; margin-bottom: 8px; }
+  .upload-zone p { font-size: 14px; color: var(--text2); }
+  .upload-zone small { font-size: 12px; color: var(--text3); }
+  .preview-img { max-width: 100%; max-height: 220px; border-radius: var(--radius); border: .5px solid var(--border); display: block; margin: 0 auto 14px; }
+
+  /* Status */
+  .status { padding: 10px 14px; border-radius: var(--radius); font-size: 13px; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .status.loading { background: var(--blue-bg); color: var(--blue); border: .5px solid var(--blue-border); }
+  .status.ok { background: var(--green-bg); color: var(--green); border: .5px solid var(--green-border); }
+  .status.err { background: var(--red-bg); color: var(--red); border: .5px solid var(--red-border); }
+  .spinner { width: 16px; height: 16px; border: 2px solid rgba(24,95,165,.2); border-top-color: var(--blue); border-radius: 50%; animation: spin .7s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Divider */
+  .divider { display: flex; align-items: center; gap: 10px; margin: 14px 0; color: var(--text3); font-size: 12px; }
+  .divider::before, .divider::after { content: ''; flex: 1; height: .5px; background: var(--border); }
+
+  /* Preview box */
+  .preview-box { background: var(--surface2); border-radius: var(--radius); padding: 12px 14px; margin-top: 12px; display: none; }
+  .preview-items { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 8px; }
+  .preview-item span { font-size: 12px; color: var(--text3); display: block; }
+  .preview-item strong { font-size: 15px; font-weight: 500; }
+  .preview-item strong.g { color: var(--green); }
+
+  /* API key section */
+  .api-section { border: .5px solid var(--border); border-radius: var(--radius-lg); padding: 14px 16px; margin-bottom: 14px; }
+  .api-toggle { display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
+  .api-toggle p { font-size: 13px; color: var(--text2); }
+  .api-body { margin-top: 12px; display: none; }
+  .api-body.open { display: block; }
+  .api-note { font-size: 12px; color: var(--text3); margin-top: 6px; line-height: 1.5; }
+  .api-note a { color: var(--blue); }
+
+  /* History table */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 520px; }
+  th { text-align: left; padding: 6px 8px; color: var(--text3); font-weight: 400; font-size: 11px; border-bottom: .5px solid var(--border); }
+  td { padding: 9px 8px; border-bottom: .5px solid var(--border); }
+  tr:last-child td { border-bottom: none; }
+  td.num { text-align: right; }
+  td.econ { color: var(--green); font-weight: 500; text-align: right; }
+  .bar-wrap { background: var(--surface2); border-radius: 3px; height: 8px; min-width: 60px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--green); border-radius: 3px; }
+  .del-btn { background: none; border: none; color: var(--text3); cursor: pointer; font-size: 16px; padding: 2px 6px; border-radius: 4px; }
+  .del-btn:hover { color: var(--red); }
+
+  /* Empty */
+  .empty { text-align: center; padding: 32px; color: var(--text3); font-size: 14px; }
+
+  /* Mobile tweaks */
+  @media (max-width: 500px) {
+    body { padding: 8px; }
+    .totals-grid { grid-template-columns: 1fr 1fr; }
+    .totals-grid .total-card:last-child { grid-column: 1 / -1; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="header-left">
+      <div class="logo"><i class="ti ti-solar-panel"></i></div>
+      <div>
+        <h1>Solar energia tracker</h1>
+        <p>Minha Usina — 4,50 kWp</p>
+      </div>
+    </div>
+    <div class="month-pill" id="badge">—</div>
+  </div>
+
+  <div class="card">
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('dashboard')"><i class="ti ti-layout-dashboard"></i> Painel</button>
+      <button class="tab" onclick="showTab('input')"><i class="ti ti-plus"></i> Registrar mês</button>
+      <button class="tab" onclick="showTab('history')"><i class="ti ti-table"></i> Histórico</button>
+      <button class="tab" onclick="showTab('settings')"><i class="ti ti-settings"></i> Config</button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="tab-dashboard">
+      <div id="metrics" class="metric-grid">
+        <div class="empty" style="grid-column:1/-1">Nenhum dado. Clique em "Registrar mês" para começar.</div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Acumulado total</div>
+        <div class="totals-grid">
+          <div class="total-card"><div class="v" id="t-econ">—</div><div class="l">Economizado</div></div>
+          <div class="total-card"><div class="v" id="t-ger">—</div><div class="l">kWh gerados</div></div>
+          <div class="total-card"><div class="v" id="t-mes">0</div><div class="l">Meses</div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Economia mensal (R$)</div>
+        <div class="chart-wrap">
+          <canvas id="chartEcon" role="img" aria-label="Gráfico de economia mensal"></canvas>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Geração vs consumo (kWh)</div>
+        <div class="chart-wrap">
+          <canvas id="chartComp" role="img" aria-label="Gráfico de geração vs consumo"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- INPUT -->
+    <div id="tab-input" style="display:none">
+
+      <!-- Upload -->
+      <div class="form-section">
+        <div class="panel-title"><i class="ti ti-camera"></i> Importar print da fatura</div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Envie um print ou foto da fatura Neoenergia — a IA preenche os campos automaticamente.</p>
+
+        <div class="upload-zone" id="upload-zone"
+          onclick="document.getElementById('file-in').click()"
+          ondragover="event.preventDefault();this.classList.add('drag')"
+          ondragleave="this.classList.remove('drag')"
+          ondrop="handleDrop(event)">
+          <i class="ti ti-cloud-upload zi"></i>
+          <p>Clique ou arraste o print aqui</p>
+          <small>JPG, PNG — qualquer tamanho razoável</small>
+        </div>
+        <input type="file" id="file-in" accept="image/*" style="display:none" onchange="handleFile(this.files[0])">
+        <div id="img-wrap" style="display:none"><img id="img-prev" class="preview-img" alt="Fatura"></div>
+        <div id="status" style="display:none" class="status"></div>
+      </div>
+
+      <!-- Manual form -->
+      <div class="form-section">
+        <div class="panel-title"><i class="ti ti-file-invoice"></i> Dados da fatura</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Mês/Ano</label>
+            <input type="text" id="f-mes" maxlength="7">
+          </div>
+          <div class="form-group">
+            <label>Leitura anterior (kWh)</label>
+            <input type="number" id="f-lant">
+          </div>
+          <div class="form-group">
+            <label>Leitura atual (kWh)</label>
+            <input type="number" id="f-lat">
+          </div>
+          <div class="form-group">
+            <label>Consumo faturado (kWh)</label>
+            <input type="number" id="f-cfat">
+            <div class="hint-text">Coluna QUANT. linha "Consumo"</div>
+          </div>
+          <div class="form-group">
+            <label>Tarifa R$/kWh</label>
+            <input type="number" id="f-tar" step="0.0001">
+            <div class="hint-text">Coluna "Preço unit. com trib."</div>
+          </div>
+          <div class="form-group">
+            <label>Total faturado (R$)</label>
+            <input type="number" id="f-tot" step="0.01">
+          </div>
+          <div class="form-group">
+            <label>Geração solar (kWh)</label>
+            <input type="number" id="f-ger">
+            <div class="hint-text">Dado do app do seu inversor</div>
+          </div>
+          <div class="form-group">
+            <label>Energia injetada (kWh)</label>
+            <input type="number" id="f-inj">
+            <div class="hint-text">Linha "Energia Injetada" no medidor</div>
+          </div>
+        </div>
+
+        <div class="preview-box" id="preview-box">
+          <div class="panel-title" style="margin-bottom:0">Prévia do cálculo</div>
+          <div class="preview-items">
+            <div class="preview-item"><span>Consumo real</span><strong id="pv-cons">—</strong></div>
+            <div class="preview-item"><span>Economia</span><strong class="g" id="pv-econ">—</strong></div>
+            <div class="preview-item"><span>Desempenho</span><strong id="pv-desp">—</strong></div>
+            <div class="preview-item"><span>Créditos gerados</span><strong id="pv-cred">—</strong></div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="saveEntry()"><i class="ti ti-device-floppy"></i> Salvar</button>
+          <button class="btn" onclick="previewCalc()"><i class="ti ti-calculator"></i> Calcular prévia</button>
+          <button class="btn" onclick="fillExample()" style="color:var(--text3)"><i class="ti ti-wand"></i> Exemplo dez/25</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div id="tab-history" style="display:none">
+      <div id="history-content"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="tab-settings" style="display:none">
+      <div class="form-section">
+        <div class="panel-title"><i class="ti ti-settings"></i> Configurações do sistema</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Nome da usina</label>
+            <input type="text" id="cfg-nome" placeholder="Ex: João e Maria" oninput="saveCfg()">
+          </div>
+          <div class="form-group">
+            <label>Potência instalada (kWp)</label>
+            <input type="number" id="cfg-kwp" placeholder="4.50" step="0.01" oninput="saveCfg()">
+          </div>
+          <div class="form-group">
+            <label>Geração esperada mensal (kWh)</label>
+            <input type="number" id="cfg-esp" placeholder="457" oninput="saveCfg()">
+            <div class="hint-text">Usado para calcular % de desempenho</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="panel-title"><i class="ti ti-refresh"></i> Sincronização entre dispositivos</div>
+        <div id="sync-status" style="font-size:13px;color:var(--text3);margin-bottom:14px;display:flex;align-items:center;gap:6px">
+          <i class="ti ti-loader"></i> Verificando...
+        </div>
+        <div id="sync-fsa" style="display:none">
+          <div class="btn-row" style="margin-bottom:8px">
+            <button class="btn btn-primary" onclick="connectFile(false)"><i class="ti ti-folder-open"></i> Selecionar solar_data.json</button>
+            <button class="btn" onclick="connectFile(true)"><i class="ti ti-file-plus"></i> Criar novo arquivo</button>
+          </div>
+          <p style="font-size:12px;color:var(--text3)">Escolha ou crie <strong>solar_data.json</strong> na pasta do iCloud. O app lê e grava automaticamente — o arquivo sincroniza via iCloud para todos os dispositivos.</p>
+        </div>
+        <div id="sync-manual">
+          <div class="btn-row" style="margin-bottom:8px">
+            <button class="btn" onclick="exportJSON()"><i class="ti ti-download"></i> Exportar JSON</button>
+            <label class="btn" style="cursor:pointer"><i class="ti ti-upload"></i> Importar JSON<input type="file" accept=".json" style="display:none" onchange="importJSON(this.files[0])"></label>
+          </div>
+          <p style="font-size:12px;color:var(--text3)">Exporte, salve na pasta iCloud e importe em cada dispositivo. Use no iPhone/iPad onde a seleção automática de arquivo não é suportada.</p>
+        </div>
+      </div>
+
+      <div class="api-section">
+        <div class="api-toggle" onclick="toggleApi()">
+          <div>
+            <div style="font-size:14px;font-weight:500"><i class="ti ti-robot"></i> Importação por IA</div>
+            <p>Chave de API Anthropic para ler prints de fatura</p>
+          </div>
+          <i class="ti ti-chevron-down" id="api-chevron"></i>
+        </div>
+        <div class="api-body" id="api-body">
+          <div class="form-group" style="margin-top:10px">
+            <label>Chave de API (fica salva só no seu navegador)</label>
+            <input type="password" id="cfg-apikey" placeholder="sk-ant-..." oninput="saveCfg()">
+          </div>
+          <div class="api-note">
+            ① Acesse <a href="https://console.anthropic.com/" target="_blank">console.anthropic.com</a> →
+            "API Keys" → "Create Key".<br>
+            ② Cole aqui. A chave fica salva <strong>só neste dispositivo</strong>, nunca é enviada a servidores externos além da API da Anthropic.<br>
+            ③ Novos usuários recebem créditos gratuitos suficientes para centenas de leituras.
+          </div>
+          <div id="api-status" style="margin-top:10px;font-size:13px;color:var(--text3)"></div>
+        </div>
+      </div>
+
+      <div class="form-section" style="border-color:var(--red-border)">
+        <div class="panel-title" style="color:var(--red)"><i class="ti ti-trash"></i> Zona de perigo</div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Apaga todos os registros salvos. Não pode ser desfeito.</p>
+        <button class="btn" style="border-color:var(--red-border);color:var(--red)" onclick="clearAll()"><i class="ti ti-trash"></i> Apagar todos os dados</button>
+      </div>
+    </div>
+
+  </div><!-- /card -->
+</div><!-- /app -->
+
+<script>
+/* ── Storage ── */
+const LS = {
+  get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+};
+
+let records = LS.get('solar_records') || [];
+let cfg = LS.get('solar_cfg') || { nome: '', kwp: 4.5, esp: 457, apikey: '' };
+
+/* ── File sync (File System Access API + IndexedDB) ── */
+const HAS_FSA = 'showOpenFilePicker' in window;
+let fileHandle = null;
+
+const IDB = {
+  _open() {
+    return new Promise((res, rej) => {
+      const r = indexedDB.open('solar_idb', 1);
+      r.onupgradeneeded = e => e.target.result.createObjectStore('kv');
+      r.onsuccess = e => res(e.target.result);
+      r.onerror = () => rej(r.error);
+    });
+  },
+  async get(key) {
+    try { const db = await this._open(); return new Promise(res => { const r = db.transaction('kv','readonly').objectStore('kv').get(key); r.onsuccess = () => res(r.result ?? null); r.onerror = () => res(null); }); } catch { return null; }
+  },
+  async set(key, val) {
+    try { const db = await this._open(); return new Promise(res => { const tx = db.transaction('kv','readwrite'); tx.objectStore('kv').put(val, key); tx.oncomplete = res; tx.onerror = res; }); } catch {}
+  }
+};
+
+async function verifyPermission(h) {
+  const opts = { mode: 'readwrite' };
+  if (await h.queryPermission(opts) === 'granted') return true;
+  return await h.requestPermission(opts) === 'granted';
+}
+
+async function loadFromFile() {
+  if (!fileHandle) return false;
+  try {
+    if (!await verifyPermission(fileHandle)) return false;
+    const data = JSON.parse(await (await fileHandle.getFile()).text());
+    if (Array.isArray(data.records)) { records = data.records; LS.set('solar_records', records); }
+    if (data.cfg) { cfg = { ...cfg, ...data.cfg }; LS.set('solar_cfg', cfg); }
+    return true;
+  } catch (e) { console.warn('Erro ao ler arquivo:', e); return false; }
+}
+
+async function saveToFile() {
+  if (!fileHandle) return;
+  try {
+    if (!await verifyPermission(fileHandle)) return;
+    const w = await fileHandle.createWritable();
+    await w.write(JSON.stringify({ records, cfg }, null, 2));
+    await w.close();
+    setSyncStatus('ok');
+  } catch (e) { console.warn('Erro ao salvar:', e); setSyncStatus('err'); }
+}
+
+function setSyncStatus(st) {
+  const el = document.getElementById('sync-status');
+  if (!el) return;
+  const name = fileHandle ? fileHandle.name : 'arquivo';
+  if (st === 'ok')   el.innerHTML = `<i class="ti ti-circle-check" style="color:var(--green)"></i> Sincronizado — <strong>${name}</strong>`;
+  else if (st === 'err') el.innerHTML = `<i class="ti ti-alert-circle" style="color:var(--red)"></i> Erro ao gravar no arquivo`;
+  else               el.innerHTML = `<i class="ti ti-cloud-off" style="color:var(--text3)"></i> Armazenamento local (somente este dispositivo)`;
+}
+
+function updateSyncUI() {
+  if (HAS_FSA) document.getElementById('sync-fsa').style.display = '';
+}
+
+async function connectFile(create = false) {
+  try {
+    let h;
+    const opts = { types: [{ description: 'Solar JSON', accept: { 'application/json': ['.json'] } }] };
+    h = create
+      ? await window.showSaveFilePicker({ ...opts, suggestedName: 'solar_data.json' })
+      : (await window.showOpenFilePicker(opts))[0];
+    fileHandle = h;
+    await IDB.set('fh', h);
+    if (create) { await saveToFile(); } else { if (await loadFromFile()) render(); }
+    setSyncStatus('ok');
+  } catch (e) { if (e.name !== 'AbortError') console.error(e); }
+}
+
+function exportJSON() {
+  const a = document.createElement('a');
+  a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify({ records, cfg }, null, 2));
+  a.download = 'solar_data.json';
+  a.click();
+}
+
+async function importJSON(file) {
+  try {
+    const data = JSON.parse(await file.text());
+    if (Array.isArray(data.records)) { records = data.records; LS.set('solar_records', records); }
+    if (data.cfg) { cfg = { ...cfg, ...data.cfg }; LS.set('solar_cfg', cfg); }
+    render();
+    alert('Dados importados com sucesso!');
+  } catch { alert('Erro ao ler o arquivo JSON.'); }
+}
+
+let econChart = null, compChart = null;
+
+/* ── Init ── */
+async function init() {
+  document.getElementById('cfg-nome').value = cfg.nome || '';
+  document.getElementById('cfg-kwp').value = cfg.kwp || '';
+  document.getElementById('cfg-esp').value = cfg.esp || '';
+  document.getElementById('cfg-apikey').value = cfg.apikey || '';
+  updateApiStatus();
+  updateSyncUI();
+  if (HAS_FSA) {
+    const stored = await IDB.get('fh');
+    if (stored) {
+      fileHandle = stored;
+      const ok = await loadFromFile();
+      if (ok) {
+        document.getElementById('cfg-nome').value = cfg.nome || '';
+        document.getElementById('cfg-kwp').value = cfg.kwp || '';
+        document.getElementById('cfg-esp').value = cfg.esp || '';
+      }
+    }
+    setSyncStatus(fileHandle ? 'ok' : 'none');
+  } else {
+    setSyncStatus('none');
+  }
+  render();
+}
+
+function saveCfg() {
+  cfg.nome = document.getElementById('cfg-nome').value;
+  cfg.kwp = parseFloat(document.getElementById('cfg-kwp').value) || 4.5;
+  cfg.esp = parseFloat(document.getElementById('cfg-esp').value) || 457;
+  cfg.apikey = document.getElementById('cfg-apikey').value;
+  LS.set('solar_cfg', cfg);
+  saveToFile();
+  updateApiStatus();
+}
+
+function updateApiStatus() {
+  const el = document.getElementById('api-status');
+  if (cfg.apikey && cfg.apikey.startsWith('sk-ant-')) {
+    el.innerHTML = '<i class="ti ti-circle-check" style="color:var(--green)"></i> Chave configurada — importação por IA ativa';
+    el.style.color = 'var(--green)';
+  } else if (cfg.apikey) {
+    el.innerHTML = '<i class="ti ti-alert-circle" style="color:#e09000"></i> Chave parece inválida (deve começar com sk-ant-)';
+    el.style.color = '#e09000';
+  } else {
+    el.textContent = 'Sem chave — preencha acima para ativar a importação por IA.';
+    el.style.color = 'var(--text3)';
+  }
+}
+
+function toggleApi() {
+  const b = document.getElementById('api-body');
+  const c = document.getElementById('api-chevron');
+  b.classList.toggle('open');
+  c.style.transform = b.classList.contains('open') ? 'rotate(180deg)' : '';
+}
+
+/* ── Calc ── */
+function calc(r) {
+  const consReal = r.leitAt - r.leitAnt;
+  const hasInj = r.injetado != null && r.ger > 0;
+  const autoConsumo = hasInj ? Math.max(0, r.ger - r.injetado) : 0;
+  const consumoTotal = hasInj ? consReal + autoConsumo : (r.consumoTotal || consReal);
+  const econKwh = consumoTotal > consReal ? (consumoTotal - r.cfat) : (r.ger > 0 ? (r.ger - r.cfat) : (consReal - r.cfat));
+  const economia = Math.max(0, econKwh * r.tar);
+  const desemp = r.ger > 0 ? (r.ger / (cfg.esp || 457) * 100) : null;
+  const compensado = consReal - r.cfat;
+  const creditos = hasInj ? Math.max(0, r.injetado - compensado) : Math.max(0, r.ger - consReal);
+  return { consReal, consumoTotal, economia, desemp, creditos };
+}
+
+const fmtR = v => 'R$ ' + v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtK = v => Math.round(v) + ' kWh';
+const sortKey = mes => { const [mm, aa] = mes.split('/'); return `${aa}${mm}`; };
+const byRecent = (a, b) => sortKey(b.mes).localeCompare(sortKey(a.mes));
+
+/* ── Render ── */
+function render() {
+  document.querySelector('.header p').textContent = (cfg.nome || 'Minha Usina') + ' — ' + (cfg.kwp || 4.5) + ' kWp';
+  updateFormPlaceholders();
+  renderDash();
+  renderHistory();
+}
+
+function updateFormPlaceholders() {
+  const lat = [...records].sort(byRecent)[0];
+  if (!lat) return;
+  document.getElementById('f-mes').placeholder    = lat.mes;
+  document.getElementById('f-lant').placeholder   = lat.leitAnt;
+  document.getElementById('f-lat').placeholder    = lat.leitAt;
+  document.getElementById('f-cfat').placeholder   = lat.cfat;
+  document.getElementById('f-tar').placeholder    = lat.tar;
+  document.getElementById('f-tot').placeholder    = lat.tot;
+  document.getElementById('f-ger').placeholder    = lat.ger || '';
+  document.getElementById('f-inj').placeholder    = lat.injetado != null ? lat.injetado : '';
+}
+
+function renderDash() {
+  const sorted = [...records].sort(byRecent);
+  const lat = sorted[0];
+  document.getElementById('badge').textContent = lat ? lat.mes : '—';
+  const el = document.getElementById('metrics');
+
+  if (!lat) {
+    el.innerHTML = '<div class="empty" style="grid-column:1/-1">Nenhum dado. Registre o primeiro mês.</div>';
+    document.getElementById('t-econ').textContent = '—';
+    document.getElementById('t-ger').textContent = '—';
+    document.getElementById('t-mes').textContent = '0';
+    return;
+  }
+
+  const c = calc(lat);
+  el.innerHTML = `
+    <div class="metric"><div class="metric-label">Geração</div><div class="metric-value blue">${lat.ger ? fmtK(lat.ger) : '—'}</div><div class="metric-sub">${lat.mes}</div></div>
+    <div class="metric"><div class="metric-label">Consumo total</div><div class="metric-value">${fmtK(c.consumoTotal)}</div><div class="metric-sub">${lat.injetado != null ? 'rede + auto-consumo' : 'só medidor'}</div></div>
+    <div class="metric"><div class="metric-label">Economia</div><div class="metric-value green">${fmtR(c.economia)}</div><div class="metric-sub">vs sem solar</div></div>
+    <div class="metric"><div class="metric-label">Faturado</div><div class="metric-value">${fmtR(lat.tot)}</div><div class="metric-sub">${lat.cfat} kWh cobrado</div></div>
+    <div class="metric"><div class="metric-label">Desempenho</div><div class="metric-value blue">${c.desemp ? c.desemp.toFixed(0) + '%' : '—'}</div><div class="metric-sub">vs ${cfg.esp || 457} kWh esperado</div></div>
+    <div class="metric"><div class="metric-label">Créditos injetados</div><div class="metric-value">${c.creditos > 0 ? fmtK(c.creditos) : '0 kWh'}</div><div class="metric-sub">na rede</div></div>`;
+
+  const totalEcon = records.reduce((s, r) => s + calc(r).economia, 0);
+  const totalGer = records.reduce((s, r) => s + (r.ger || 0), 0);
+  document.getElementById('t-econ').textContent = fmtR(totalEcon);
+  document.getElementById('t-ger').textContent = fmtK(totalGer);
+  document.getElementById('t-mes').textContent = records.length;
+
+  const chartData = sorted.slice(0, 10).reverse();
+  renderChartEcon(chartData);
+  renderChartComp(chartData);
+}
+
+function renderChartEcon(data) {
+  if (econChart) econChart.destroy();
+  const ctx = document.getElementById('chartEcon');
+  econChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: data.map(r => r.mes),
+      datasets: [{ label: 'Economia R$', data: data.map(r => calc(r).economia.toFixed(2)), backgroundColor: '#1D9E75', borderRadius: 4 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { ticks: { callback: v => 'R$' + Math.round(v) }, grid: { color: 'rgba(128,128,128,.08)' } },
+        x: { ticks: { autoSkip: false, maxRotation: 45 }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+function renderChartComp(data) {
+  if (compChart) compChart.destroy();
+  const ctx = document.getElementById('chartComp');
+  compChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: data.map(r => r.mes),
+      datasets: [
+        { label: 'Geração', data: data.map(r => r.ger || 0), backgroundColor: '#185FA5', borderRadius: 4 },
+        { label: 'Consumo real', data: data.map(r => calc(r).consReal), backgroundColor: '#e0a000', borderRadius: 4 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { boxWidth: 10, font: { size: 11 } } } },
+      scales: {
+        y: { ticks: { callback: v => v + ' kWh' }, grid: { color: 'rgba(128,128,128,.08)' } },
+        x: { ticks: { autoSkip: false, maxRotation: 45 }, grid: { display: false } }
+      }
+    }
+  });
+}
+
+function renderHistory() {
+  const el = document.getElementById('history-content');
+  if (!records.length) { el.innerHTML = '<div class="empty">Nenhum registro ainda.</div>'; return; }
+  const sorted = [...records].sort(byRecent);
+  const maxE = Math.max(...sorted.map(r => calc(r).economia));
+  const rows = sorted.map(r => {
+    const c = calc(r);
+    const pct = maxE > 0 ? (c.economia / maxE * 100).toFixed(0) : 0;
+    return `<tr>
+      <td>${r.mes}</td>
+      <td class="num">${r.ger ? fmtK(r.ger) : '—'}</td>
+      <td class="num">${fmtK(c.consReal)}</td>
+      <td class="num">${r.cfat} kWh</td>
+      <td class="num">${fmtR(r.tot)}</td>
+      <td class="econ">${fmtR(c.economia)}</td>
+      <td><div class="bar-wrap"><div class="bar-fill" style="width:${pct}%"></div></div></td>
+      <td><button class="del-btn" onclick="delRecord('${r.mes}')"><i class="ti ti-x"></i></button></td>
+    </tr>`;
+  }).join('');
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Mês</th><th style="text-align:right">Geração</th><th style="text-align:right">Consumo</th><th style="text-align:right">Fat. kWh</th><th style="text-align:right">Valor</th><th style="text-align:right">Economia</th><th></th><th></th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table></div>`;
+}
+
+/* ── Save / Delete ── */
+function saveEntry() {
+  const mes = document.getElementById('f-mes').value.trim();
+  const lant = parseFloat(document.getElementById('f-lant').value);
+  const lat = parseFloat(document.getElementById('f-lat').value);
+  const cfat = parseFloat(document.getElementById('f-cfat').value);
+  const tar = parseFloat(document.getElementById('f-tar').value);
+  const tot = parseFloat(document.getElementById('f-tot').value);
+  const ger = parseFloat(document.getElementById('f-ger').value) || 0;
+  const inj = parseFloat(document.getElementById('f-inj').value);
+  if (!mes || isNaN(lant) || isNaN(lat) || isNaN(cfat) || isNaN(tar) || isNaN(tot)) {
+    alert('Preencha todos os campos obrigatórios (exceto geração solar).'); return;
+  }
+  const entry = { mes, leitAnt: lant, leitAt: lat, cfat, tar, tot, ger, ...(!isNaN(inj) && inj >= 0 && { injetado: inj }) };
+  const idx = records.findIndex(r => r.mes === mes);
+  if (idx >= 0) records[idx] = entry; else records.push(entry);
+  LS.set('solar_records', records);
+  saveToFile();
+  render();
+  showTab('dashboard');
+  clearForm();
+}
+
+function delRecord(mes) {
+  if (!confirm('Excluir o registro de ' + mes + '?')) return;
+  records = records.filter(r => r.mes !== mes);
+  LS.set('solar_records', records);
+  saveToFile();
+  render();
+}
+
+function clearAll() {
+  if (!confirm('Apagar TODOS os registros? Isso não pode ser desfeito.')) return;
+  records = [];
+  LS.set('solar_records', records);
+  saveToFile();
+  render();
+}
+
+/* ── Form helpers ── */
+function clearForm() {
+  ['f-mes','f-lant','f-lat','f-cfat','f-tar','f-tot','f-ger','f-inj'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('preview-box').style.display = 'none';
+  document.getElementById('img-wrap').style.display = 'none';
+  document.getElementById('status').style.display = 'none';
+}
+
+function fillFields(d) {
+  const map = { 'f-mes': 'mes', 'f-lant': 'leitAnt', 'f-lat': 'leitAt', 'f-cfat': 'cfat', 'f-tar': 'tarifa', 'f-tot': 'total', 'f-inj': 'injetado' };
+  Object.entries(map).forEach(([id, key]) => {
+    if (d[key] !== undefined && d[key] !== null) {
+      const el = document.getElementById(id);
+      el.value = d[key];
+      el.classList.add('filled');
+      setTimeout(() => el.classList.remove('filled'), 3000);
+    }
+  });
+  previewCalc();
+}
+
+function fillExample() {
+  const lat = [...records].sort(byRecent)[0];
+  if (lat) {
+    fillFields({ mes: lat.mes, leitAnt: lat.leitAnt, leitAt: lat.leitAt, cfat: lat.cfat, tarifa: lat.tar, total: lat.tot, injetado: lat.injetado });
+    document.getElementById('f-ger').value = lat.ger || '';
+  } else {
+    fillFields({ mes: '01/2026', leitAnt: 2256, leitAt: 2596, cfat: 2, tarifa: 0.85454270, total: 56.98, injetado: 500 });
+    document.getElementById('f-ger').value = 681;
+  }
+  previewCalc();
+}
+
+function previewCalc() {
+  const lant = parseFloat(document.getElementById('f-lant').value) || 0;
+  const lat = parseFloat(document.getElementById('f-lat').value) || 0;
+  const cfat = parseFloat(document.getElementById('f-cfat').value) || 0;
+  const tar = parseFloat(document.getElementById('f-tar').value) || 0;
+  const ger = parseFloat(document.getElementById('f-ger').value) || 0;
+  const inj = parseFloat(document.getElementById('f-inj').value);
+  const consReal = lat - lant;
+  const autoConsumo = (ger > 0 && !isNaN(inj)) ? Math.max(0, ger - inj) : 0;
+  const consumoTotal = autoConsumo > 0 ? consReal + autoConsumo : consReal;
+  const econKwh = consumoTotal > consReal ? (consumoTotal - cfat) : (ger > 0 ? (ger - cfat) : (consReal - cfat));
+  const economia = Math.max(0, econKwh * tar);
+  const desemp = ger > 0 ? (ger / (cfg.esp || 457) * 100).toFixed(0) + '%' : '—';
+  const creditos = Math.max(0, ger - consReal);
+  document.getElementById('pv-cons').textContent = fmtK(consReal);
+  document.getElementById('pv-econ').textContent = fmtR(economia);
+  document.getElementById('pv-desp').textContent = desemp;
+  document.getElementById('pv-cred').textContent = creditos > 0 ? fmtK(creditos) : '0 kWh';
+  document.getElementById('preview-box').style.display = 'block';
+}
+
+/* ── File upload / AI ── */
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f) handleFile(f);
+}
+
+function handleFile(file) {
+  if (!file) return;
+  if (!cfg.apikey || !cfg.apikey.startsWith('sk-ant-')) {
+    setStatus('err', 'Configure sua chave de API na aba ⚙️ Config para usar a importação por IA.');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    const dataUrl = ev.target.result;
+    document.getElementById('img-prev').src = dataUrl;
+    document.getElementById('img-wrap').style.display = 'block';
+    const base64 = dataUrl.split(',')[1];
+    const mime = file.type || 'image/jpeg';
+    setStatus('loading', 'Lendo fatura com IA...');
+    await extractWithAI(base64, mime);
+  };
+  reader.readAsDataURL(file);
+}
+
+function setStatus(type, msg) {
+  const el = document.getElementById('status');
+  el.style.display = 'flex';
+  el.className = 'status ' + type;
+  el.innerHTML = type === 'loading'
+    ? `<div class="spinner"></div><span>${msg}</span>`
+    : `<i class="ti ti-${type === 'ok' ? 'circle-check' : 'alert-circle'}"></i><span>${msg}</span>`;
+}
+
+async function extractWithAI(base64, mime) {
+  const prompt = `Você é um extrator de dados de faturas de energia elétrica brasileiras (Neoenergia/CEB).
+Analise esta imagem e retorne SOMENTE este JSON (sem markdown, sem texto adicional):
+{"mes":"MM/AAAA","leitAnt":número,"leitAt":número,"cfat":número,"tarifa":número,"total":número,"injetado":número}
+
+- mes: campo REF:MÊS/ANO
+- leitAnt: leitura anterior do medidor linha ENERGIA ATIVA (tabela inferior, coluna LEITURA ANTERIOR)
+- leitAt: leitura atual do medidor linha ENERGIA ATIVA (coluna LEITURA ATUAL)
+- cfat: consumo faturado kWh (linha "Consumo", coluna QUANT.) — pode ser 0 ou número pequeno
+- tarifa: preço unitário com tributos R$/kWh (linha "Consumo", coluna PREÇO UNIT. COM TRIB.)
+- total: TOTAL A PAGAR em R$ (pode ser 0,00)
+- injetado: consumo kWh da linha ENERGIA INJETADA na tabela do medidor (0 se não houver)`;
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': cfg.apikey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 400,
+        messages: [{ role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: mime, data: base64 } },
+          { type: 'text', text: prompt }
+        ]}]
+      })
+    });
+    const data = await resp.json();
+    if (data.error) { setStatus('err', 'Erro da API: ' + data.error.message); return; }
+    const text = data.content.map(b => b.text || '').join('').replace(/```[a-z]*/g, '').replace(/```/g, '').trim();
+    const parsed = JSON.parse(text);
+    fillFields(parsed);
+    setStatus('ok', 'Dados extraídos com sucesso! Confira os campos e adicione a geração solar do inversor.');
+  } catch (e) {
+    setStatus('err', 'Não consegui extrair os dados. Verifique a qualidade da imagem ou preencha manualmente.');
+    console.error(e);
+  }
+}
+
+/* ── Tabs ── */
+function showTab(name) {
+  ['dashboard', 'input', 'history', 'settings'].forEach((t, i) => {
+    document.getElementById('tab-' + t).style.display = t === name ? '' : 'none';
+    document.querySelectorAll('.tab')[i].classList.toggle('active', t === name);
+  });
+}
+
+init();
+</script>
+</body>
+</html>
